@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  weekly-lead-report: every Friday at 18:05 (broker time zone, UTC in Docker) the team lead
+  gets a summary of the week: open cases, stale cases, CSAT, survey coverage.
+  The timer start event creates an instance on schedule; the demo also starts one manually.
+-->
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+                  xmlns:modeler="http://camunda.org/schema/modeler/1.0"
+                  id="Definitions_WeeklyLeadReport"
+                  targetNamespace="http://example.com/support-platform"
+                  exporter="hand-written"
+                  exporterVersion="1"
+                  modeler:executionPlatform="Camunda Cloud"
+                  modeler:executionPlatformVersion="8.10.0">
+  <bpmn:process id="weekly-lead-report" name="Weekly lead report" isExecutable="true">
+    <bpmn:startEvent id="Start_Friday" name="Friday 18:05">
+      <bpmn:outgoing>Flow_Start_Report</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDefinition_Friday">
+        <bpmn:timeCycle>0 5 18 * * FRI</bpmn:timeCycle>
+      </bpmn:timerEventDefinition>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Task_LeadReport" name="Build and send weekly report to lead">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="lead-weekly-report" retries="3" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Start_Report</bpmn:incoming>
+      <bpmn:outgoing>Flow_Report_End</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="End_Sent" name="Report sent">
+      <bpmn:incoming>Flow_Report_End</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_Start_Report" sourceRef="Start_Friday" targetRef="Task_LeadReport" />
+    <bpmn:sequenceFlow id="Flow_Report_End" sourceRef="Task_LeadReport" targetRef="End_Sent" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="weekly-lead-report">
+      <bpmndi:BPMNShape id="Shape_Start_Friday" bpmnElement="Start_Friday">
+        <dc:Bounds x="152" y="82" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="139" y="125" width="62" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Task_LeadReport" bpmnElement="Task_LeadReport">
+        <dc:Bounds x="240" y="60" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_End_Sent" bpmnElement="End_Sent">
+        <dc:Bounds x="392" y="82" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="381" y="125" width="59" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Edge_Flow_Start_Report" bpmnElement="Flow_Start_Report">
+        <di:waypoint x="188" y="100" /><di:waypoint x="240" y="100" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_Report_End" bpmnElement="Flow_Report_End">
+        <di:waypoint x="340" y="100" /><di:waypoint x="392" y="100" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

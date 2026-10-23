@@ -1,0 +1,112 @@
+# Minimal local Camunda 8.10 stack for this demo.
+# Derived from the official lightweight distribution
+# (github.com/camunda/camunda-distributions, docker-compose/versions/camunda-8.10),
+# trimmed to what this project needs: one Orchestration Cluster container
+# (Zeebe + Operate + Tasklist + REST API) on file-based H2, plus the Connectors runtime.
+# Not for production. Web UIs: demo / demo. REST API is unprotected on purpose (local only).
+services:
+  camunda-data-init:
+    image: camunda/camunda:${CAMUNDA_VERSION:-8.10.6}
+    user: "0:0"
+    entrypoint: ["/bin/sh", "-c", "chown -R 1001:1001 /usr/local/camunda/camunda-data && chmod 775 /usr/local/camunda/camunda-data"]
+    volumes:
+      - camunda-data:/usr/local/camunda/camunda-data
+    restart: "no"
+
+  orchestration:
+    image: camunda/camunda:${CAMUNDA_VERSION:-8.10.6}
+    container_name: c8-orchestration
+    ports:
+      - "8080:8080"    # REST API /v2, Operate /operate, Tasklist /tasklist
+      - "26500:26500"  # gRPC gateway (not used by this project, kept for SDK users)
+      - "9600:9600"    # actuator / health
+    mem_limit: 1g
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/9600 && echo -e \"GET /actuator/health/status HTTP/1.1\r\nHost: localhost\r\n\r\n\" >&3 && head -n 1 <&3'"]
+      interval: 2s
+      retries: 60
+      start_period: 30s
+    volumes:
+      - camunda:/usr/local/camunda/data
+      - camunda-data:/usr/local/camunda/camunda-data
+    configs:
+      - source: orchestration-config
+        target: /usr/local/camunda/config/application.yaml
+    networks: [camunda]
+    depends_on:
+      camunda-data-init:
+        condition: service_completed_successfully
+
+  connectors:
+    image: camunda/connectors-bundle:${CAMUNDA_CONNECTORS_VERSION:-8.10.2}
+    container_name: c8-connectors
+    ports:
+      - "8086:8080"
+    mem_limit: 512m
+    restart: on-failure
+    configs:
+      - source: connectors-config
+        target: /application.yaml
+    networks: [camunda]
+    depends_on:
+      orchestration:
+        condition: service_healthy
+
+volumes:
+  camunda:
+  camunda-data:
+
+networks:
+  camunda:
+    name: camunda
+
+configs:
+  orchestration-config:
+    content: |
+      camunda:
+        backup:
+          webapps:
+            enabled: false
+        system:
+          cpu-thread-count: "2"
+          io-thread-count: "2"
+        security:
+          authentication:
+            method: "basic"
+            unprotectedApi: true
+          authorizations:
+            enabled: false
+          initialization:
+            users:
+              - username: "demo"
+                password: "demo"
+                name: "Demo User"
+                email: "demo@example.com"
+            defaultRoles.admin.users:
+              - "demo"
+        data:
+          secondary-storage:
+            type: rdbms
+            rdbms:
+              url: jdbc:h2:file:./camunda-data/h2db
+              username: sa
+              password:
+              flushInterval: PT0.5S
+              queueSize: 1000
+  connectors-config:
+    content: |
+      camunda:
+        client:
+          mode: self-managed
+          grpc-address: http://orchestration:26500
+          rest-address: http://orchestration:8080
+      management:
+        endpoints:
+          web:
+            exposure:
+              include: health
+        endpoint:
+          health:
+            probes:
+              enabled: true

@@ -1,0 +1,71 @@
+{
+  "id": "duty-survey",
+  "type": "default",
+  "schemaVersion": 18,
+  "executionPlatform": "Camunda Cloud",
+  "executionPlatformVersion": "8.10.0",
+  "exporter": { "name": "hand-written", "version": "1" },
+  "components": [
+    {
+      "id": "Text_Intro",
+      "type": "text",
+      "text": "## Duty survey\n\nThread `{{threadId}}` in `{{channel}}` is resolved. Thirty seconds, please: this feeds the weekly report and the bus-factor dashboard."
+    },
+    {
+      "id": "Field_Area",
+      "type": "select",
+      "key": "surveyArea",
+      "label": "Area",
+      "defaultValue": "{{area}}",
+      "validate": { "required": true },
+      "values": [
+        { "label": "Backtesting", "value": "backtesting" },
+        { "label": "Gateway / connectivity", "value": "gateway" },
+        { "label": "Core / backend", "value": "core" },
+        { "label": "Infra / stands", "value": "infra" },
+        { "label": "Data / market data", "value": "data" },
+        { "label": "Other", "value": "other" }
+      ]
+    },
+    {
+      "id": "Field_Type",
+      "type": "radio",
+      "key": "surveyType",
+      "label": "Type",
+      "validate": { "required": true },
+      "values": [
+        { "label": "How-to / question", "value": "howto" },
+        { "label": "Bug", "value": "bug" },
+        { "label": "Config error", "value": "config" },
+        { "label": "Feature request", "value": "feature" },
+        { "label": "Incident / manual operation", "value": "incident" }
+      ]
+    },
+    {
+      "id": "Field_Outcome",
+      "type": "radio",
+      "key": "surveyOutcome",
+      "label": "Outcome",
+      "validate": { "required": true },
+      "values": [
+        { "label": "Solved in thread", "value": "solved" },
+        { "label": "Jira ticket created", "value": "ticket" },
+        { "label": "Forwarded to another team", "value": "forwarded" },
+        { "label": "Author went silent", "value": "silent" }
+      ]
+    },
+    {
+      "id": "Field_Solver",
+      "type": "textfield",
+      "key": "surveySolver",
+      "label": "Who actually solved it",
+      "description": "Slack handle. Honest answer, please: the point is to see where knowledge is concentrated."
+    },
+    {
+      "id": "Field_CouldSolveAlone",
+      "type": "checkbox",
+      "key": "surveyCouldSolveAlone",
+      "label": "I could have solved this alone with the docs we have"
+    }
+  ]
+}

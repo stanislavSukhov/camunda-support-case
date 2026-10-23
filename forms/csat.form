@@ -1,0 +1,33 @@
+{
+  "id": "csat",
+  "type": "default",
+  "schemaVersion": 18,
+  "executionPlatform": "Camunda Cloud",
+  "executionPlatformVersion": "8.10.0",
+  "exporter": { "name": "hand-written", "version": "1" },
+  "components": [
+    {
+      "id": "Text_Intro",
+      "type": "text",
+      "text": "## Did the on-call team help?\n\nOne click. Your answer goes to the platform lead, not to the engineer who answered."
+    },
+    {
+      "id": "Field_Rating",
+      "type": "radio",
+      "key": "csatRating",
+      "label": "Rating",
+      "validate": { "required": true },
+      "values": [
+        { "label": "👍 Yes, solved", "value": "up" },
+        { "label": "👎 No, still stuck", "value": "down" },
+        { "label": "🤷 Partly / not sure", "value": "unsure" }
+      ]
+    },
+    {
+      "id": "Field_Comment",
+      "type": "textarea",
+      "key": "csatComment",
+      "label": "Anything to add? (optional)"
+    }
+  ]
+}

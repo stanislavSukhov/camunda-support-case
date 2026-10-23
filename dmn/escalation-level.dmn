@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  escalation-level: who gets the reminder, by reminder number and area.
+  reminderIndex is 0-based (0 = first reminder, day 1; 1 = day 3; 2 = day 10).
+  Infra and backtesting threads escalate one step earlier because historically
+  they are the ones the on-call engineer cannot solve alone.
+-->
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
+             xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/"
+             xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/"
+             xmlns:modeler="http://camunda.org/schema/modeler/1.0"
+             id="Definitions_Escalation" name="Support escalation"
+             namespace="http://example.com/support-platform"
+             exporter="hand-written" exporterVersion="1"
+             modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.10.0">
+  <decision id="escalation-level" name="Escalation level">
+    <decisionTable id="DecisionTable_Escalation" hitPolicy="FIRST">
+      <input id="Input_ReminderIndex" label="Reminder number (0-based)">
+        <inputExpression id="InputExpression_ReminderIndex" typeRef="number">
+          <text>reminderIndex</text>
+        </inputExpression>
+      </input>
+      <input id="Input_Area" label="Area">
+        <inputExpression id="InputExpression_Area" typeRef="string">
+          <text>area</text>
+        </inputExpression>
+      </input>
+      <output id="Output_Level" label="Level" name="level" typeRef="string" />
+      <output id="Output_Notify" label="Notify" name="notify" typeRef="string" />
+      <rule id="Rule_1">
+        <description>First reminder: a quiet DM to the on-call engineer</description>
+        <inputEntry id="Rule_1_In_1"><text>0</text></inputEntry>
+        <inputEntry id="Rule_1_In_2"><text></text></inputEntry>
+        <outputEntry id="Rule_1_Out_1"><text>"L1"</text></outputEntry>
+        <outputEntry id="Rule_1_Out_2"><text>"on-call"</text></outputEntry>
+      </rule>
+      <rule id="Rule_2">
+        <description>Second reminder on a hard area: copy the team lead</description>
+        <inputEntry id="Rule_2_In_1"><text>1</text></inputEntry>
+        <inputEntry id="Rule_2_In_2"><text>"infra", "backtesting"</text></inputEntry>
+        <outputEntry id="Rule_2_Out_1"><text>"L2"</text></outputEntry>
+        <outputEntry id="Rule_2_Out_2"><text>"on-call, team-lead"</text></outputEntry>
+      </rule>
+      <rule id="Rule_3">
+        <description>Second reminder elsewhere: DM again</description>
+        <inputEntry id="Rule_3_In_1"><text>1</text></inputEntry>
+        <inputEntry id="Rule_3_In_2"><text></text></inputEntry>
+        <outputEntry id="Rule_3_Out_1"><text>"L1"</text></outputEntry>
+        <outputEntry id="Rule_3_Out_2"><text>"on-call"</text></outputEntry>
+      </rule>
+      <rule id="Rule_4">
+        <description>Third and later reminders: team lead and head of platform</description>
+        <inputEntry id="Rule_4_In_1"><text>&gt;= 2</text></inputEntry>
+        <inputEntry id="Rule_4_In_2"><text></text></inputEntry>
+        <outputEntry id="Rule_4_Out_1"><text>"L3"</text></outputEntry>
+        <outputEntry id="Rule_4_Out_2"><text>"on-call, team-lead, head-of-platform"</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+  <dmndi:DMNDI>
+    <dmndi:DMNDiagram id="DMNDiagram_1">
+      <dmndi:DMNShape id="DMNShape_Escalation" dmnElementRef="escalation-level">
+        <dc:Bounds height="80" width="180" x="160" y="100" />
+      </dmndi:DMNShape>
+    </dmndi:DMNDiagram>
+  </dmndi:DMNDI>
+</definitions>
