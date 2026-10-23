@@ -198,7 +198,7 @@
         <zeebe:assignmentDefinition candidateGroups="thread-authors" />
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_Fork_Csat</bpmn:incoming>
-      <bpmn:outgoing>Flow_Csat_Join</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Csat_Merge</bpmn:outgoing>
     </bpmn:userTask>
 
     <bpmn:boundaryEvent id="Boundary_CsatTimeout" name="No answer in time" attachedToRef="Task_Csat" cancelActivity="true">
@@ -216,13 +216,22 @@
         </zeebe:ioMapping>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_Timeout_Digest</bpmn:incoming>
-      <bpmn:outgoing>Flow_Digest_Join</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Digest_Merge</bpmn:outgoing>
     </bpmn:serviceTask>
+
+    <!-- The CSAT branch ends in exactly one of two ways (answered or timed out), so merge
+         them with an exclusive gateway BEFORE the parallel join. A parallel join waits for a
+         token on every incoming flow; wiring both ends into it directly deadlocks forever.
+         Found the hard way on the first demo run. -->
+    <bpmn:exclusiveGateway id="Gateway_CsatDone" name="CSAT answered or timed out">
+      <bpmn:incoming>Flow_Csat_Merge</bpmn:incoming>
+      <bpmn:incoming>Flow_Digest_Merge</bpmn:incoming>
+      <bpmn:outgoing>Flow_Merge_Join</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
 
     <bpmn:parallelGateway id="Gateway_Join">
       <bpmn:incoming>Flow_Survey_Join</bpmn:incoming>
-      <bpmn:incoming>Flow_Csat_Join</bpmn:incoming>
-      <bpmn:incoming>Flow_Digest_Join</bpmn:incoming>
+      <bpmn:incoming>Flow_Merge_Join</bpmn:incoming>
       <bpmn:outgoing>Flow_Join_Close</bpmn:outgoing>
     </bpmn:parallelGateway>
 
@@ -282,9 +291,10 @@
     <bpmn:sequenceFlow id="Flow_Fork_Survey" sourceRef="Gateway_Fork" targetRef="Task_DutySurvey" />
     <bpmn:sequenceFlow id="Flow_Fork_Csat" sourceRef="Gateway_Fork" targetRef="Task_Csat" />
     <bpmn:sequenceFlow id="Flow_Survey_Join" sourceRef="Task_DutySurvey" targetRef="Gateway_Join" />
-    <bpmn:sequenceFlow id="Flow_Csat_Join" sourceRef="Task_Csat" targetRef="Gateway_Join" />
+    <bpmn:sequenceFlow id="Flow_Csat_Merge" sourceRef="Task_Csat" targetRef="Gateway_CsatDone" />
     <bpmn:sequenceFlow id="Flow_Timeout_Digest" sourceRef="Boundary_CsatTimeout" targetRef="Task_Digest" />
-    <bpmn:sequenceFlow id="Flow_Digest_Join" sourceRef="Task_Digest" targetRef="Gateway_Join" />
+    <bpmn:sequenceFlow id="Flow_Digest_Merge" sourceRef="Task_Digest" targetRef="Gateway_CsatDone" />
+    <bpmn:sequenceFlow id="Flow_Merge_Join" sourceRef="Gateway_CsatDone" targetRef="Gateway_Join" />
     <bpmn:sequenceFlow id="Flow_Join_Close" sourceRef="Gateway_Join" targetRef="Task_CloseCase" />
     <bpmn:sequenceFlow id="Flow_Close_Webhook" sourceRef="Task_CloseCase" targetRef="Task_PostWebhook" />
     <bpmn:sequenceFlow id="Flow_Webhook_End" sourceRef="Task_PostWebhook" targetRef="End_Closed" />
@@ -357,7 +367,11 @@
         <bpmndi:BPMNLabel><dc:Bounds x="945" y="250" width="86" height="14" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Shape_Task_Digest" bpmnElement="Task_Digest">
-        <dc:Bounds x="1000" y="280" width="100" height="80" />
+        <dc:Bounds x="1020" y="280" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Gateway_CsatDone" bpmnElement="Gateway_CsatDone" isMarkerVisible="true">
+        <dc:Bounds x="1045" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1030" y="138" width="80" height="27" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Shape_Gateway_Join" bpmnElement="Gateway_Join">
         <dc:Bounds x="1145" y="175" width="50" height="50" />
@@ -429,14 +443,17 @@
       <bpmndi:BPMNEdge id="Edge_Flow_Survey_Join" bpmnElement="Flow_Survey_Join">
         <di:waypoint x="950" y="100" /><di:waypoint x="1170" y="100" /><di:waypoint x="1170" y="175" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_Flow_Csat_Join" bpmnElement="Flow_Csat_Join">
-        <di:waypoint x="950" y="200" /><di:waypoint x="1145" y="200" />
+      <bpmndi:BPMNEdge id="Edge_Flow_Csat_Merge" bpmnElement="Flow_Csat_Merge">
+        <di:waypoint x="950" y="200" /><di:waypoint x="1045" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_Merge_Join" bpmnElement="Flow_Merge_Join">
+        <di:waypoint x="1095" y="200" /><di:waypoint x="1145" y="200" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Edge_Flow_Timeout_Digest" bpmnElement="Flow_Timeout_Digest">
-        <di:waypoint x="930" y="258" /><di:waypoint x="930" y="320" /><di:waypoint x="1000" y="320" />
+        <di:waypoint x="930" y="258" /><di:waypoint x="930" y="320" /><di:waypoint x="1020" y="320" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_Flow_Digest_Join" bpmnElement="Flow_Digest_Join">
-        <di:waypoint x="1100" y="320" /><di:waypoint x="1170" y="320" /><di:waypoint x="1170" y="225" />
+      <bpmndi:BPMNEdge id="Edge_Flow_Digest_Merge" bpmnElement="Flow_Digest_Merge">
+        <di:waypoint x="1070" y="280" /><di:waypoint x="1070" y="225" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Edge_Flow_Join_Close" bpmnElement="Flow_Join_Close">
         <di:waypoint x="1195" y="200" /><di:waypoint x="1240" y="200" />

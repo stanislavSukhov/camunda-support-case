@@ -36,12 +36,14 @@ def banner(msg: str) -> None:
     print(f"\n==== {msg}", flush=True)
 
 
-def tag_thread(c: C8, thread_id: str, text: str, **overrides) -> None:
+def tag_thread(c: C8, thread_id: str, text: str, ttl_ms: int = 0, **overrides) -> None:
+    """A tag is a fact, not a request: publish with TTL 0. If a case for this thread is
+    already active, the message start event ignores it (no buffering, no second case)."""
     variables = {
         "threadId": thread_id, "channel": "#helpdesk-platform",
         "author": "alice", "onCall": "bob", "text": text, **overrides,
     }
-    c.publish_message("thread-tagged", thread_id, variables)
+    c.publish_message("thread-tagged", thread_id, variables, ttl_ms=ttl_ms)
     print(f"-> published thread-tagged for {thread_id}", flush=True)
 
 
@@ -94,8 +96,11 @@ def main() -> int:
     dep = c.deploy(RESOURCES)
     for d in dep.get("deployments", []):
         for kind, meta in d.items():
+            if not meta:
+                continue  # every entry carries all kinds; only one is populated
             name = meta.get("processDefinitionId") or meta.get("decisionDefinitionId") or meta.get("formId") or meta.get("decisionRequirementsId")
-            print(f"   {kind:<22} {name}  v{meta.get('processDefinitionVersion') or meta.get('version') or meta.get('decisionDefinitionVersion', '')}")
+            version = meta.get("processDefinitionVersion") or meta.get("decisionDefinitionVersion") or meta.get("version") or meta.get("decisionRequirementsVersion") or ""
+            print(f"   {kind:<22} {name}  v{version}")
 
     journal.reset()
     stop = worker.start(c)
@@ -159,6 +164,17 @@ def main() -> int:
     pi4 = instance_for(c, t4)
     s4 = wait_state(c, pi4["processInstanceKey"], timeout_s=60)
 
+    # ---- scenario 5: left open for you ---------------------------------------
+    banner("scenario 5: resolved, forms left open for you to fill in Tasklist")
+    t5 = f"T5-{RUN}"
+    tag_thread(c, t5, "Where do I find the parquet dataset for last week's market data?",
+               onCall="bob", reminderDelays=["PT2H"], csatTimeout="PT2H")
+    pi5 = instance_for(c, t5)
+    time.sleep(1)
+    c.publish_message("thread-resolved", t5, {"resolvedVia": "checkmark"})
+    wait_user_task(c, pi5["processInstanceKey"], "Task_DutySurvey")
+    print(f"   instance {pi5['processInstanceKey']} is waiting on 'Fill duty survey' and 'CSAT' in Tasklist")
+
     # ---- weekly report ------------------------------------------------------
     banner("weekly lead report (timer start event fires Fridays 18:05; starting one now)")
     wr = c.create_instance("weekly-lead-report")
@@ -170,6 +186,7 @@ def main() -> int:
         print(f"   {name:<26} instance {s.get('processInstanceKey')}  state={s.get('state')}  incident={s.get('hasIncident')}")
     print(f"\njournal: {journal.JOURNAL}\ndigest:  {journal.DIGEST}")
     print("Operate:  http://localhost:8080/operate   Tasklist: http://localhost:8080/tasklist   (demo / demo)")
+    print("Keep `python3 worker/worker.py` running if you complete the open forms in Tasklist by hand.")
     return 0 if all(s.get("state") == "COMPLETED" for s in (s1, s2, s3, s4)) else 1
 
 
